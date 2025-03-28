@@ -60,18 +60,39 @@ class Party:
         print(f'{'-'*LINE_LENGTH}\n')
 
     def fill_gems(self, count):
-        gems = [random.choice(list(ELEMENT_SYMBOLS.items())) for i in range(count)]
+        gems = [random.choice(list(ELEMENT_SYMBOLS.items())[0:-1]) for i in range(count)]
         return gems
 
     def show_gems(self):
-        print(f'{'-'*LINE_LENGTH}')
-        [print(f'{' ' if i > 0 else ''}{chr(i+65)}', end='') for i in range(14)]
-        print()
         for i, (key, value) in enumerate(self.gems, 0):
            color  = '4' + ELEMENT_COLORS[key]
            print(f'{' ' if i > 0 else ''}', end='')
            print(f'\033[{color}m\033[30m{value}\033[0m', end='')
-        print(f'\n{'-'*LINE_LENGTH}')
+        print()
+
+    def move_gem(self, command):
+        before = command[0:1].upper()
+        after = command[-1:].upper()
+        beforeIndex = ord(before) - 65 
+        afterIndex = ord(after) - 65
+        if beforeIndex < 0 or beforeIndex >= len(self.gems):
+            return
+        if afterIndex < 0 or afterIndex >= len(self.gems):
+            return
+
+        step = 1 if beforeIndex < afterIndex else -1 
+        [self.swap_gem(i, step) for i in range(beforeIndex, afterIndex, step)]
+
+    def swap_gem(self, index, step): 
+        if index < 0 or index + step < 0 or index >= len(self.gems) or index + step >= len(self.gems):
+            return
+
+        temp = self.gems[index + step]
+        self.gems[index + step] = self.gems[index]
+        self.gems[index] = temp
+
+        self.show_gems()
+        print()
 
 # data
 enemys = [
@@ -106,13 +127,12 @@ def main():
     print(f'倒したモンスター数={win_count}')
 
 def input_player_name():
-    player_name = ''
-    while len(player_name) == 0:
+    while True:
         player_name = input('プレイヤー名を入力してください>') or ''
         if len(player_name) == 0:
             print('エラー：プレイヤー名を入力してください')
-    
-    return player_name
+        else:
+            return player_name
 
 def go_dungeon(party, enemys):
     print(f'{party.name}のパーティ(HP={party.hp})はダンジョンに到着した')
@@ -140,7 +160,8 @@ def organize_party(player_name, friends):
 def on_player_turn(party, enemy):
     print(f'\n【{party.name}のターン】(HP={party.hp})')
     show_battle_field(party, enemy)
-    command = input('コマンド？>')
+    command = input_command()
+    party.move_gem(command)
     do_attack(enemy, command)
 
 def on_enemy_turn(party, enemy):
@@ -166,7 +187,7 @@ def do_battle(party, enemy):
 def do_attack(enemy, command):
     damage = abs(hash(command)) % 50
     damage += math.floor(damage + random.uniform(-damage/10, damage/10))
-    print(f'{damage}のダメージを与えた')
+    print(f'ダミー攻撃で{damage}のダメージを与えた')
     enemy.hp = max(0, enemy.hp - damage)
 
 def do_enemy_attack(party):
@@ -180,7 +201,36 @@ def show_battle_field(party, enemy):
     print(f'HP = {enemy.hp:3d} / {enemy.max_hp:3d}\n')
     [print(f'{' ' if i > 0 else ''}', end='') or friend.print_name() for i, friend in enumerate(party.friends, 0)]
     print(f'\nHP = {party.hp:3d} / {party.max_hp:3d}')
+    print(f'{'-'*LINE_LENGTH}')
+    [print(f'{' ' if i > 0 else ''}{chr(i+65)}', end='') for i in range(14)]
+    print()
     party.show_gems()
+    print(f'{'-'*LINE_LENGTH}')
+
+def input_command():
+    while True:
+        command = input('コマンド？>')
+        if check_valid_command(command):
+            return command
+
+def check_valid_command(command):
+    if len(command) != 2:
+        print(f'2文字で入力して下さい。')
+        return False
+
+    before = command[0:1].upper()
+    after = command[-1:].upper()
+    
+    table = [chr(i+65) for i in range(14)]
+    if before not in table or after not in table:
+        print(f'{table[0]}~{table[-1]}の範囲で入力してくだい')
+        return False
+    
+    if before == after:
+        print(f'1文字目と2文字目が同じ値です')
+        return False
+
+    return True
 
 # start app
 main()
