@@ -5,6 +5,7 @@ author: tsune.motooka
 
 # import
 import math
+import random
 
 # const
 ELEMENT_SYMBOLS = {
@@ -39,8 +40,23 @@ class Monster:
         color  = '3' + ELEMENT_COLORS[self.element]
         print(f'\033[{color}m{symbol}{self.name}{symbol}\033[0m', end='')
 
+class Party:
+    def __init__(self, name, friends):
+        self.name = name
+        self.friends = friends
+        self.hp = sum([friend.hp for friend in friends])
+        self_max_hp = sum([friend.max_hp for friend in friends])
+        self.dp = math.ceil(sum([friend.dp for friend in friends]) / len(friends))
+    
+    def show(self):
+        print(f'＜パーティ編成＞----------------')
+        for friend in self.friends:
+            friend.print_name()
+            print(f' HP= {friend.hp:3} 攻撃= {friend.ap:2} 防御= {friend.dp:2}')
+        print(f'{'-'*32}\n')
+
 # data
-monsters = [
+enemys = [
         Monster('スライム',    100, '水', 10,  1),
         Monster('ゴブリン',    200, '土', 20,  5),
         Monster('オオコウモリ',300, '風', 30, 10),
@@ -63,9 +79,9 @@ def main():
 
     party = organize_party(player_name, friends)
 
-    win_count = go_dungeon(party, monsters)
+    win_count = go_dungeon(party, enemys)
 
-    if win_count >= len(monsters):
+    if win_count >= len(enemys):
         print('*** GAME CLEARED!! ***')
     else:
         print('*** GAME OVER!! ***')
@@ -80,53 +96,64 @@ def input_player_name():
     
     return player_name
 
-def go_dungeon(party, monsters):
-    win_count = 0
-    print(f'{party['player_name']}のパーティ(HP={party['hp']})はダンジョンに到着した')
-    show_party(party)
-    #モンスターとの戦闘
-    for monster in monsters:
-        win_count += do_battle(monster)
+def go_dungeon(party, enemys):
+    print(f'{party.name}のパーティ(HP={party.hp})はダンジョンに到着した')
+    party.show()
 
-        if party['hp'] > 0:
-            print(f'{party['player_name']}はさらに奥へと進んだ')
+    #モンスターとの戦闘
+    win_count = 0
+    for enemy in enemys:
+        win_count += do_battle(party, enemy)
+
+        if party.hp > 0:
+            print(f'{party.name}はさらに奥へと進んだ')
             print(f'{'='*32}')
         else:
-            print(f'{party['player_name']}はダンジョンから逃げ出した')
+            print(f'{party.name}はダンジョンから逃げ出した')
             break
     else:
-        print(f'{party['player_name']}はダンジョンを制覇した')
+        print(f'{party.name}はダンジョンを制覇した')
 
     return win_count
 
-def do_battle(monster):
-    monster.print_name()
-    print(f'が現れた！')
-    monster.print_name()
-    print(f'を倒した！')
-    return 1
-
 def organize_party(player_name, friends):
-    sum_hp = sum([friend.hp for friend in friends])
-    sum_max_hp = sum([friend.max_hp for friend in friends])
-    avg_dp = math.ceil(sum([friend.dp for friend in friends]) / len(friends))
+    return Party(player_name, friends)
 
-    party = {
-            'player_name': player_name,
-            'friends': friends,
-            'hp': sum_hp,
-            'max_hp': sum_max_hp,
-            'dp': avg_dp
-            }
+def on_player_turn(party, enemy):
+    print(f'\n【{party.name}のターン】(HP={party.hp})')
+    command = input('コマンド？>')
+    do_attack(enemy, command)
+
+def on_enemy_turn(party, enemy):
+    print(f'\n【{enemy.name}のターン】(HP={enemy.hp})')
+    do_enemy_attack(party)
+
+def do_battle(party, enemy):
+    enemy.print_name()
+    print(f'が現れた！')
     
-    return party
+    while True:
+        on_player_turn(party, enemy)
+        if enemy.hp <= 0:
+            enemy.print_name()
+            print(f'を倒した！')
+            return 1
 
-def show_party(party):
-    print(f'＜パーティ編成＞----------------')
-    for friend in party['friends']:
-        friend.print_name()
-        print(f' HP= {friend.hp:3} 攻撃= {friend.ap:2} 防御= {friend.dp:2}')
-    print(f'{'-'*32}\n')
+        on_enemy_turn(party, enemy)
+        if party.hp <= 0:
+            print(f'パーティのHPが0になった')
+            return 0
+
+def do_attack(enemy, command):
+    damage = abs(hash(command)) % 50
+    damage += math.floor(damage + random.uniform(-damage/10, damage/10))
+    print(f'{damage}のダメージを与えた')
+    enemy.hp = max(0, enemy.hp - damage)
+
+def do_enemy_attack(party):
+    damage = 200
+    print(f'{damage}のダメージを受けた')
+    party.hp = max(0, party.hp - damage)
 
 # start app
 main()
