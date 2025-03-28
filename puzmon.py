@@ -24,7 +24,9 @@ ELEMENT_COLORS = {
         '命': '5',
         '無': '7',
         }
-    
+
+LINE_LENGTH = 32
+
 # class
 class Monster:
     def __init__(self, name, max_hp, element, ap, dp):
@@ -37,23 +39,39 @@ class Monster:
 
     def print_name(self):
         symbol = ELEMENT_SYMBOLS[self.element]
-        color  = '3' + ELEMENT_COLORS[self.element]
-        print(f'\033[{color}m{symbol}{self.name}{symbol}\033[0m', end='')
+        color  = '4' + ELEMENT_COLORS[self.element]
+        print(f'\033[{color}m\033[30m{symbol}{self.name}{symbol}\033[0m', end='')
 
 class Party:
     def __init__(self, name, friends):
         self.name = name
         self.friends = friends
         self.hp = sum([friend.hp for friend in friends])
-        self_max_hp = sum([friend.max_hp for friend in friends])
+        self.max_hp = sum([friend.max_hp for friend in friends])
         self.dp = math.ceil(sum([friend.dp for friend in friends]) / len(friends))
-    
+        self.gems = self.fill_gems(14)
+
     def show(self):
-        print(f'＜パーティ編成＞----------------')
+        print(f'＜パーティ編成＞')
+        print(f'{'-'*LINE_LENGTH}')
         for friend in self.friends:
             friend.print_name()
             print(f' HP= {friend.hp:3} 攻撃= {friend.ap:2} 防御= {friend.dp:2}')
-        print(f'{'-'*32}\n')
+        print(f'{'-'*LINE_LENGTH}\n')
+
+    def fill_gems(self, count):
+        gems = [random.choice(list(ELEMENT_SYMBOLS.items())) for i in range(count)]
+        return gems
+
+    def show_gems(self):
+        print(f'{'-'*LINE_LENGTH}')
+        [print(f'{' ' if i > 0 else ''}{chr(i+65)}', end='') for i in range(14)]
+        print()
+        for i, (key, value) in enumerate(self.gems, 0):
+           color  = '4' + ELEMENT_COLORS[key]
+           print(f'{' ' if i > 0 else ''}', end='')
+           print(f'\033[{color}m\033[30m{value}\033[0m', end='')
+        print(f'\n{'-'*LINE_LENGTH}')
 
 # data
 enemys = [
@@ -107,7 +125,7 @@ def go_dungeon(party, enemys):
 
         if party.hp > 0:
             print(f'{party.name}はさらに奥へと進んだ')
-            print(f'{'='*32}')
+            print(f'{'='*LINE_LENGTH}')
         else:
             print(f'{party.name}はダンジョンから逃げ出した')
             break
@@ -121,6 +139,7 @@ def organize_party(player_name, friends):
 
 def on_player_turn(party, enemy):
     print(f'\n【{party.name}のターン】(HP={party.hp})')
+    show_battle_field(party, enemy)
     command = input('コマンド？>')
     do_attack(enemy, command)
 
@@ -154,6 +173,14 @@ def do_enemy_attack(party):
     damage = 200
     print(f'{damage}のダメージを受けた')
     party.hp = max(0, party.hp - damage)
+
+def show_battle_field(party, enemy):
+    print(f'バトルフィールド')
+    enemy.print_name()
+    print(f'HP = {enemy.hp:3d} / {enemy.max_hp:3d}\n')
+    [print(f'{' ' if i > 0 else ''}', end='') or friend.print_name() for i, friend in enumerate(party.friends, 0)]
+    print(f'\nHP = {party.hp:3d} / {party.max_hp:3d}')
+    party.show_gems()
 
 # start app
 main()
