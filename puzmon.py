@@ -5,6 +5,7 @@ author: tsune.motooka
 
 # import
 import math
+import random
 
 # const
 ELEMENT_SYMBOLS = {
@@ -144,7 +145,8 @@ def do_battle(party, enemy):
             return 0
 
 def do_attack(enemy, command):
-    damage = 50
+    damage = abs(hash(command)) % 50
+    damage += math.floor(damage + random.uniform(-damage/10, damage/10))
     print(f'{damage}のダメージを与えた')
     enemy.hp = max(0, enemy.hp - damage)
 
