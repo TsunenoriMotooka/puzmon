@@ -25,6 +25,27 @@ ELEMENT_COLORS = {
         '無': '7',
         }
 
+ELEMENT_BOOST = {
+        '火': {
+            '風': 2.0,
+            '水': 0.5,
+            },
+        '水': {
+            '火': 2.0,
+            '土': 0.5,
+            },
+        '風': {
+            '土': 2.0,
+            '火': 0.5,
+            },
+        '土': {
+            '水': 2.0,
+            '風': 0.5,
+            },
+        }
+
+GEMS_LENGTH = 14
+
 LINE_LENGTH = 32
 
 # class
@@ -60,30 +81,26 @@ class Party:
         print(f'{'-'*LINE_LENGTH}\n')
 
     def fill_gems(self, count):
-        gems = [random.choice(list(ELEMENT_SYMBOLS.items())[0:-1]) for i in range(count)]
+        gems = [random.choice(list(ELEMENT_SYMBOLS.keys())[0:-1]) for i in range(count)]
         return gems
 
     def show_gems(self):
-        for i, (key, value) in enumerate(self.gems, 0):
-           color  = '4' + ELEMENT_COLORS[key]
+        for i, element in enumerate(self.gems, 0):
+           color  = '4' + ELEMENT_COLORS[element]
            print(f'{' ' if i > 0 else ''}', end='')
-           print(f'\033[{color}m\033[30m{value}\033[0m', end='')
+           print(f'\033[{color}m\033[30m{ELEMENT_SYMBOLS[element]}\033[0m', end='')
         print()
 
-    def move_gem(self, command):
-        before = command[0:1].upper()
-        after = command[-1:].upper()
-        beforeIndex = ord(before) - 65 
-        afterIndex = ord(after) - 65
+    def move_gem(self, beforeIndex, afterIndex, output=True):
         if beforeIndex < 0 or beforeIndex >= len(self.gems):
             return
         if afterIndex < 0 or afterIndex >= len(self.gems):
             return
 
         step = 1 if beforeIndex < afterIndex else -1 
-        [self.swap_gem(i, step) for i in range(beforeIndex, afterIndex, step)]
+        [self.swap_gem(i, step, output) for i in range(beforeIndex, afterIndex, step)]
 
-    def swap_gem(self, index, step): 
+    def swap_gem(self, index, step, output=True): 
         if index < 0 or index + step < 0 or index >= len(self.gems) or index + step >= len(self.gems):
             return
 
@@ -91,8 +108,42 @@ class Party:
         self.gems[index + step] = self.gems[index]
         self.gems[index] = temp
 
-        self.show_gems()
-        print()
+        if output:
+            self.show_gems()
+    
+    def check_banishable(self):
+        indexs = [i for i in range(len(self.gems) - 2) if self.gems[i] == self.gems[i+1] and self.gems[i] == self.gems[i+2]]  
+        if len(indexs) > 0:
+            banish_list = set()
+            for index in indexs:
+                for i in range(index, index + 3):
+                    banish_list.add(i)    
+            
+            return list(banish_list)
+
+    def banish_gems(self):
+        banish_list = self.check_banishable()
+        if len(banish_list) > 0:
+            for i in banish_list:
+                self.gems[i] = list(ELEMENT_SYMBOLS.keys())[-1]
+            self.show_gems()
+
+    def shift_gems(self):
+        none = list(ELEMENT_SYMBOLS.keys())[-1]
+        for i in range(len(self.gems) - 1, -1, -1):
+            if self.gems[i] == none:
+                self.move_gem(i, len(self.gems) - 1, False)
+                self.show_gems()
+
+    def spawn_gems(self):
+        none = list(ELEMENT_SYMBOLS.keys())[-1]
+        is_spawn = False
+        for i in range(len(self.gems)):
+            if self.gems[i] == none:
+                self.gems[i] = self.fill_gems(1)[0]
+                is_spawn = True
+        if is_spawn:
+            self.show_gems()
 
 # data
 enemys = [
@@ -161,8 +212,15 @@ def on_player_turn(party, enemy):
     print(f'\n【{party.name}のターン】(HP={party.hp})')
     show_battle_field(party, enemy)
     command = input_command()
-    party.move_gem(command)
+    before = command[0:1].upper()
+    after = command[-1:].upper()
+    beforeIndex = ord(before) - 65 
+    afterIndex = ord(after) - 65
+    party.move_gem(beforeIndex, afterIndex)
+    party.banish_gems()
     do_attack(enemy, command)
+    party.shift_gems()
+    party.spawn_gems()
 
 def on_enemy_turn(party, enemy):
     print(f'\n【{enemy.name}のターン】(HP={enemy.hp})')
