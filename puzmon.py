@@ -49,6 +49,7 @@ class Party:
         self.hp = sum([friend.hp for friend in friends])
         self.max_hp = sum([friend.max_hp for friend in friends])
         self.dp = math.ceil(sum([friend.dp for friend in friends]) / len(friends))
+        self.gems = self.fill_gems(14)
 
     def show(self):
         print(f'＜パーティ編成＞')
@@ -57,6 +58,20 @@ class Party:
             friend.print_name()
             print(f' HP= {friend.hp:3} 攻撃= {friend.ap:2} 防御= {friend.dp:2}')
         print(f'{'-'*LINE_LENGTH}\n')
+
+    def fill_gems(self, count):
+        gems = [random.choice(list(ELEMENT_SYMBOLS.items())) for i in range(count)]
+        return gems
+
+    def show_gems(self):
+        print(f'{'-'*LINE_LENGTH}')
+        [print(f'{' ' if i > 0 else ''}{chr(i+65)}', end='') for i in range(14)]
+        print()
+        for i, (key, value) in enumerate(self.gems, 0):
+           color  = '4' + ELEMENT_COLORS[key]
+           print(f'{' ' if i > 0 else ''}', end='')
+           print(f'\033[{color}m\033[30m{value}\033[0m', end='')
+        print(f'\n{'-'*LINE_LENGTH}')
 
 # data
 enemys = [
@@ -165,22 +180,7 @@ def show_battle_field(party, enemy):
     print(f'HP = {enemy.hp:3d} / {enemy.max_hp:3d}\n')
     [print(f'{' ' if i > 0 else ''}', end='') or friend.print_name() for i, friend in enumerate(party.friends, 0)]
     print(f'\nHP = {party.hp:3d} / {party.max_hp:3d}')
-    gems = fill_gems(14)
-    show_gems(gems)
-
-def fill_gems(count):
-    gems = [random.choice(list(ELEMENT_SYMBOLS.items())) for i in range(count)]
-    return gems
-
-def show_gems(gems):
-    print(f'{'-'*LINE_LENGTH}')
-    [print(f'{' ' if i > 0 else ''}{chr(i+65)}', end='') for i in range(14)]
-    print()
-    for i, (key, value) in enumerate(gems, 0):
-       color  = '4' + ELEMENT_COLORS[key]
-       print(f'{' ' if i > 0 else ''}', end='')
-       print(f'\033[{color}m\033[30m{value}\033[0m', end='')
-    print(f'\n{'-'*LINE_LENGTH}')
+    party.show_gems()
 
 # start app
 main()
