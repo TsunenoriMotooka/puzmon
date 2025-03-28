@@ -8,6 +8,9 @@ import math
 import random
 
 # const
+ELEMENT_NONE = '無'
+ELEMENT_LIFE = '命'
+
 ELEMENT_SYMBOLS = {
         '火': '$',
         '水': '~',
@@ -26,22 +29,14 @@ ELEMENT_COLORS = {
         }
 
 ELEMENT_BOOST = {
-        '火': {
-            '風': 2.0,
-            '水': 0.5,
-            },
-        '水': {
-            '火': 2.0,
-            '土': 0.5,
-            },
-        '風': {
-            '土': 2.0,
-            '火': 0.5,
-            },
-        '土': {
-            '水': 2.0,
-            '風': 0.5,
-            },
+        '火風': 2.0,
+        '火水': 0.5,
+        '水火': 2.0,
+        '水土': 0.5,
+        '風土': 2.0,
+        '風火': 0.5,
+        '土水': 2.0,
+        '土風': 0.5,
         }
 
 GEMS_LENGTH = 14
@@ -70,7 +65,7 @@ class Party:
         self.hp = sum([friend.hp for friend in friends])
         self.max_hp = sum([friend.max_hp for friend in friends])
         self.dp = math.ceil(sum([friend.dp for friend in friends]) / len(friends))
-        self.gems = self.fill_gems(14)
+        self.gems = self.fill_gems(GEMS_LENGTH)
 
     def show(self):
         print(f'＜パーティ編成＞')
@@ -112,38 +107,45 @@ class Party:
             self.show_gems()
     
     def check_banishable(self):
-        indexs = [i for i in range(len(self.gems) - 2) if self.gems[i] == self.gems[i+1] and self.gems[i] == self.gems[i+2]]  
-        if len(indexs) > 0:
-            banish_list = set()
-            for index in indexs:
-                for i in range(index, index + 3):
-                    banish_list.add(i)    
-            
-            return list(banish_list)
+        for i in range(GEMS_LENGTH - 2):
+            banish_list = {i}
+            element = self.gems[i]
+            for j in range(i + 1, GEMS_LENGTH):
+                if element == self.gems[j]:
+                    banish_list.add(j)
+                else:
+                    break
+            if len(banish_list) >=3:
+                return (element, banish_list)
+        else:
+            return (None, None)
 
     def banish_gems(self):
-        banish_list = self.check_banishable()
+        _, banish_list = self.check_banishable()
         if len(banish_list) > 0:
             for i in banish_list:
-                self.gems[i] = list(ELEMENT_SYMBOLS.keys())[-1]
+                self.gems[i] = ELEMENT_NONE
             self.show_gems()
 
     def shift_gems(self):
-        none = list(ELEMENT_SYMBOLS.keys())[-1]
         for i in range(len(self.gems) - 1, -1, -1):
-            if self.gems[i] == none:
+            if self.gems[i] == ELEMENT_NONE:
                 self.move_gem(i, len(self.gems) - 1, False)
                 self.show_gems()
 
     def spawn_gems(self):
-        none = list(ELEMENT_SYMBOLS.keys())[-1]
         is_spawn = False
         for i in range(len(self.gems)):
-            if self.gems[i] == none:
+            if self.gems[i] == ELEMENT_NONE:
                 self.gems[i] = self.fill_gems(1)[0]
                 is_spawn = True
         if is_spawn:
             self.show_gems()
+
+    def get_friend_by_element(self, element):
+        friends = [friend for friend in self.friends if friend.element == element]
+        if len(friends) > 0:
+            return friends[0]
 
 # data
 enemys = [
@@ -217,14 +219,31 @@ def on_player_turn(party, enemy):
     beforeIndex = ord(before) - 65 
     afterIndex = ord(after) - 65
     party.move_gem(beforeIndex, afterIndex)
-    party.banish_gems()
-    do_attack(enemy, command)
-    party.shift_gems()
-    party.spawn_gems()
+   
+    combo = 0
+    while True: 
+        element, banish_list = party.check_banishable()
+        if element is None:
+            break
+
+        party.banish_gems()
+        combo = combo + 1
+    
+        if element == ELEMENT_LIFE:
+            do_recover(party, len(banish_list), combo)
+        elif element == ELEMENT_NONE:
+            pass
+        else:
+            friend = party.get_friend_by_element(element)
+            if friend is not None:
+               do_attack(friend, enemy, len(banish_list), combo)
+
+        party.shift_gems()
+        party.spawn_gems()
 
 def on_enemy_turn(party, enemy):
     print(f'\n【{enemy.name}のターン】(HP={enemy.hp})')
-    do_enemy_attack(party)
+    do_enemy_attack(party, enemy)
 
 def do_battle(party, enemy):
     enemy.print_name()
@@ -242,16 +261,41 @@ def do_battle(party, enemy):
             print(f'パーティのHPが0になった')
             return 0
 
-def do_attack(enemy, command):
-    damage = abs(hash(command)) % 50
-    damage += math.floor(damage + random.uniform(-damage/10, damage/10))
-    print(f'ダミー攻撃で{damage}のダメージを与えた')
+def do_attack(friend, enemy, gems_count, combo):
+    element_boost = get_element_boost(friend.element, enemy.element)
+    combo_boost = get_combo_boost(gems_count, combo)
+
+    damage = (friend.ap - enemy.dp) * element_boost * combo_boost
+    threshold = damage  / 10
+    
+    damage = blur_damage(damage, threshold)
+    
+    friend.print_name()
+    print(f'の攻撃！')
+    enemy.print_name()
+    print(f'に{damage}のダメージを与えた')
     enemy.hp = max(0, enemy.hp - damage)
 
-def do_enemy_attack(party):
-    damage = 200
+def do_recover(party, gems_count, combo):
+    combo_boost = get_combo_boost(gems_count, combo)
+    heal = 20 * combo_boost
+    threshold = heal / 10
+    heal = blur_damage(heal, threshold)
+    print(f'{party.name}のHPは{heal}回復した')
+    party.hp = min(party.hp + heal, party.max_hp)
+
+def do_enemy_attack(party, enemy):
+    damage = enemy.ap - party.dp
+    threshold = damage / 10
+    damage = blur_damage(damage, threshold)
     print(f'{damage}のダメージを受けた')
     party.hp = max(0, party.hp - damage)
+
+def get_element_boost(attack_element, defence_element):
+    return ELEMENT_BOOST.get(attack_element+defence_element) or 1.0
+
+def get_combo_boost(gems_count, combo):
+    return 1.5 ** (gems_count - 3 + combo) 
 
 def show_battle_field(party, enemy):
     print(f'バトルフィールド')
@@ -260,7 +304,7 @@ def show_battle_field(party, enemy):
     [print(f'{' ' if i > 0 else ''}', end='') or friend.print_name() for i, friend in enumerate(party.friends, 0)]
     print(f'\nHP = {party.hp:3d} / {party.max_hp:3d}')
     print(f'{'-'*LINE_LENGTH}')
-    [print(f'{' ' if i > 0 else ''}{chr(i+65)}', end='') for i in range(14)]
+    [print(f'{' ' if i > 0 else ''}{chr(i+65)}', end='') for i in range(GEMS_LENGTH)]
     print()
     party.show_gems()
     print(f'{'-'*LINE_LENGTH}')
@@ -279,7 +323,7 @@ def check_valid_command(command):
     before = command[0:1].upper()
     after = command[-1:].upper()
     
-    table = [chr(i+65) for i in range(14)]
+    table = [chr(i+65) for i in range(GEMS_LENGTH)]
     if before not in table or after not in table:
         print(f'{table[0]}~{table[-1]}の範囲で入力してくだい')
         return False
@@ -289,6 +333,9 @@ def check_valid_command(command):
         return False
 
     return True
+
+def blur_damage(damage, threshold):
+    return max(1, int(damage + random.uniform(-threshold, threshold)))
 
 # start app
 main()
