@@ -229,9 +229,9 @@ def on_player_turn(party, enemy):
     afterIndex = ord(after) - 65
     party.move_gem(beforeIndex, afterIndex)
    
-    do_combo(party, enemy)
+    evaluate_gems(party, enemy)
             
-def do_combo(party, enemy, combo=0, on_spawn=False):
+def evaluate_gems(party, enemy, combo=0, on_spawn=False):
     while True: 
         if on_spawn:
             party.spawn_gems()
@@ -255,7 +255,7 @@ def do_combo(party, enemy, combo=0, on_spawn=False):
         party.shift_gems()
 
     if on_spawn != True:
-        do_combo(party, enemy, combo, on_spawn=True) 
+        evaluate_gems(party, enemy, combo, on_spawn=True) 
 
 def on_enemy_turn(party, enemy):
     print(f'\n【{enemy.name}のターン】(HP={enemy.hp})')
