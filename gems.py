@@ -72,7 +72,7 @@ class Gems:
         for i in range(len(self.gems) - 1, -1, -1):
             if self.gems[i] == ELEMENT_NONE:
                 self.move(i, len(self.gems) - 1, False)
-        self.show()
+                self.show()
 
     def spawn(self):
         on_spawn = False
