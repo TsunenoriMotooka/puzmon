@@ -1,0 +1,38 @@
+ELEMENT_FIRE  = '火'
+ELEMENT_WATER = '水'
+ELEMENT_EARTH = '土'
+ELEMENT_WIND  = '風'
+ELEMENT_LIFE  = '命'
+ELEMENT_NONE  = '無'
+
+ELEMENT_SYMBOLS = {
+        ELEMENT_FIRE:  '$',
+        ELEMENT_WATER: '~',
+        ELEMENT_WIND:  '@',
+        ELEMENT_EARTH: '#',
+        ELEMENT_LIFE:  '&',
+        ELEMENT_NONE:  ' ',
+        }
+ELEMENT_COLORS = {
+        ELEMENT_FIRE:  '1',
+        ELEMENT_WATER: '6',
+        ELEMENT_WIND:  '2',
+        ELEMENT_EARTH: '3',
+        ELEMENT_LIFE:  '5',
+        ELEMENT_NONE:  '7',
+        }
+
+ELEMENT_BOOST = {
+        ELEMENT_FIRE  + ELEMENT_WIND:  2.0,
+        ELEMENT_FIRE  + ELEMENT_WATER: 0.5,
+        ELEMENT_WATER + ELEMENT_FIRE:  2.0,
+        ELEMENT_WATER + ELEMENT_EARTH: 0.5,
+        ELEMENT_WIND  + ELEMENT_EARTH: 2.0,
+        ELEMENT_WIND  + ELEMENT_FIRE:  0.5,
+        ELEMENT_EARTH + ELEMENT_WATER: 2.0,
+        ELEMENT_EARTH + ELEMENT_WIND:  0.5,
+        }
+
+GEMS_LENGTH = 14
+LINE_LENGTH = 34
+
