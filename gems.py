@@ -69,9 +69,14 @@ class Gems:
             self.show(banish_element, len(banish_list))
 
     def shift(self):
-        for i in range(len(self.gems) - 1, -1, -1):
-            if self.gems[i] == ELEMENT_NONE:
-                self.move(i, len(self.gems) - 1, False)
+        self.show()
+        for i in range(len(self.gems)):
+            while self.gems[i] == ELEMENT_NONE:
+                if self.gems[i:] == [ELEMENT_NONE] * (len(self.gems) - i):
+                    break
+
+                gem = self.gems.pop(i)
+                self.gems.append(gem)
                 self.show()
 
     def spawn(self):
