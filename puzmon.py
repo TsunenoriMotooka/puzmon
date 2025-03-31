@@ -13,31 +13,27 @@ ELEMENT_LIFE = '命'
 
 ELEMENT_SYMBOLS = {
         '火': '$',
-        '水': '~',
         '風': '@',
         '土': '#',
+        '水': '~',
         '命': '&',
         '無': ' ',
         }
 ELEMENT_COLORS = {
         '火': '1',
-        '水': '6',
         '風': '2',
         '土': '3',
+        '水': '6',
         '命': '5',
         '無': '7',
         }
 
-ELEMENT_BOOST = {
-        '火風': 2.0,
-        '火水': 0.5,
-        '水火': 2.0,
-        '水土': 0.5,
-        '風土': 2.0,
-        '風火': 0.5,
-        '土水': 2.0,
-        '土風': 0.5,
-        }
+ELEMENT_BOOST = [
+        1.0,
+        0.5,
+        1.0,
+        2.0,
+        ]
 
 GEMS_LENGTH = 14
 
@@ -289,9 +285,7 @@ def do_attack(friend, enemy, banish_count, combo):
     combo_boost = get_combo_boost(banish_count, combo)
 
     damage = max(1, friend.ap - enemy.dp) * element_boost * combo_boost
-    threshold = damage  / 10
-    
-    damage = blur_damage(damage, threshold)
+    damage = blur_damage(damage)
     
     friend.print_name()
     print(f'の攻撃！{f' {combo} Commbo!!' if combo > 1 else ''}')
@@ -302,20 +296,20 @@ def do_attack(friend, enemy, banish_count, combo):
 def do_recover(party, banish_count, combo):
     combo_boost = get_combo_boost(banish_count, combo)
     heal = 20 * combo_boost
-    threshold = heal / 10
-    heal = blur_damage(heal, threshold)
+    heal = blur_damage(heal)
     print(f'{party.name}のHPは{heal}回復した')
     party.hp = min(party.hp + heal, party.max_hp)
 
 def do_enemy_attack(party, enemy):
     damage = enemy.ap - party.dp
-    threshold = damage / 10
-    damage = blur_damage(damage, threshold)
+    damage = blur_damage(damage)
     print(f'{damage}のダメージを受けた')
     party.hp = max(0, party.hp - damage)
 
 def get_element_boost(attack_element, defence_element):
-    return ELEMENT_BOOST.get(attack_element+defence_element) or 1.0
+    elements = list(ELEMENT_SYMBOLS.keys())[0:4]
+    index = (elements.index(attack_element) + 4 - elements.index(defence_element)) % 4
+    return ELEMENT_BOOST[index]
 
 def get_combo_boost(banish_count, combo):
     return 1.5 ** max(1, banish_count - 3 + combo) 
@@ -357,8 +351,8 @@ def check_valid_command(command):
 
     return True
 
-def blur_damage(damage, threshold):
-    return max(1, int(damage + random.uniform(-threshold, threshold)))
+def blur_damage(damage):
+    return max(1, int(damage * (random.uniform(-0.1, 0.1) + 1)))
 
 # start app
 main()
