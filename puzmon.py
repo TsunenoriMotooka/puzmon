@@ -120,7 +120,7 @@ class Party:
             banish_list = {i}
             element = self.gems[i]
             if element == ELEMENT_NONE:
-                break
+                continue
 
             for j in range(i + 1, GEMS_LENGTH):
                 if element == self.gems[j]:
@@ -139,10 +139,17 @@ class Party:
             self.show_gems(banish_element, len(banish_list))
 
     def shift_gems(self):
-        for i in range(len(self.gems) - 1, -1, -1):
+        i = 0
+        while i < GEMS_LENGTH - 1:
+            if self.gems[i:] == [ELEMENT_NONE] * (GEMS_LENGTH - i):
+                break
             if self.gems[i] == ELEMENT_NONE:
+                before = [gem for gem in self.gems]
                 self.move_gem(i, len(self.gems) - 1, False)
-        self.show_gems()
+                if before != self.gems:
+                    self.show_gems()
+            else:
+                i += 1
 
     def spawn_gems(self):
         on_spawn = False
@@ -229,33 +236,34 @@ def on_player_turn(party, enemy):
     afterIndex = ord(after) - 65
     party.move_gem(beforeIndex, afterIndex)
    
-    do_commbo(party, enemy)
+    evaluate_gems(party, enemy)
             
-def do_commbo(party, enemy, commbo=0, on_spawn=False):
-    while True: 
-        if on_spawn:
+def evaluate_gems(party, enemy):
+    combo = 0
+    while True:     
+        has_banished = False
+        while True: 
+            element, banish_list = party.check_banishable()
+            if element is None:
+                break
+
+            party.banish_gems()
+        
+            if element == ELEMENT_LIFE:
+                do_recover(party, len(banish_list), combo)
+                has_banished = True
+            else:
+                friend = party.get_friend_by_element(element)
+                if friend is not None:
+                    combo += 1
+                    has_banished = True
+                    do_attack(friend, enemy, len(banish_list), combo)
+
+        if has_banished:
+            party.shift_gems()
             party.spawn_gems()
-
-        element, banish_list = party.check_banishable()
-        if element is None:
-            break
-
-        party.banish_gems()
-    
-        if element == ELEMENT_LIFE:
-            do_recover(party, len(banish_list), commbo)
-        elif element == ELEMENT_NONE:
-            pass
         else:
-            friend = party.get_friend_by_element(element)
-            if friend is not None:
-                commbo += 1
-                do_attack(friend, enemy, len(banish_list), commbo)
-
-        party.shift_gems()
-
-    if on_spawn != True:
-        do_commbo(party, enemy, commbo, on_spawn=True) 
+            break
 
 def on_enemy_turn(party, enemy):
     print(f'\n【{enemy.name}のターン】(HP={enemy.hp})')
@@ -277,24 +285,24 @@ def do_battle(party, enemy):
             print(f'パーティのHPが0になった')
             return 0
 
-def do_attack(friend, enemy, gems_count, commbo):
+def do_attack(friend, enemy, gems_count, combo):
     element_boost = get_element_boost(friend.element, enemy.element)
-    commbo_boost = get_commbo_boost(gems_count, commbo)
+    combo_boost = get_combo_boost(gems_count, combo)
 
-    damage = (friend.ap - enemy.dp) * element_boost * commbo_boost
+    damage = (friend.ap - enemy.dp) * element_boost * combo_boost
     threshold = damage  / 10
     
     damage = blur_damage(damage, threshold)
     
     friend.print_name()
-    print(f'の攻撃！{f' {commbo} Commbo!!' if commbo > 1 else ''}')
+    print(f'の攻撃！{f' {combo} Commbo!!' if combo > 1 else ''}')
     enemy.print_name()
     print(f'に{damage}のダメージを与えた')
     enemy.hp = max(0, enemy.hp - damage)
 
-def do_recover(party, gems_count, commbo):
-    commbo_boost = get_commbo_boost(gems_count, commbo)
-    heal = 20 * commbo_boost
+def do_recover(party, gems_count, combo):
+    combo_boost = get_combo_boost(gems_count, combo)
+    heal = 20 * combo_boost
     threshold = heal / 10
     heal = blur_damage(heal, threshold)
     print(f'{party.name}のHPは{heal}回復した')
@@ -310,8 +318,8 @@ def do_enemy_attack(party, enemy):
 def get_element_boost(attack_element, defence_element):
     return ELEMENT_BOOST.get(attack_element+defence_element) or 1.0
 
-def get_commbo_boost(gems_count, commbo):
-    return 1.5 ** max(1, gems_count - 3 + commbo) 
+def get_combo_boost(gems_count, combo):
+    return 1.5 ** max(1, gems_count - 3 + combo) 
 
 def show_battle_field(party, enemy):
     print(f'バトルフィールド')
