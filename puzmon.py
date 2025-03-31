@@ -78,33 +78,34 @@ def on_player_turn(party, enemy):
     beforeIndex = ord(before) - 65 
     afterIndex = ord(after) - 65
     party.gems.move(beforeIndex, afterIndex)
+
     evaluate_gems(party, enemy)
             
-def evaluate_gems(party, enemy, combo=0, on_spawn=False):
-    while True: 
-        if on_spawn:
+def evaluate_gems(party, enemy):
+    combo = 0
+    while True:
+        has_banished = False
+        while True: 
+            element, banish_list = party.gems.check_banishable()
+            if element is None:
+                break
+
+            party.gems.banish()
+            has_banished = True
+        
+            if element == ELEMENT_LIFE:
+                do_recover(party, len(banish_list), combo)
+            else:
+                friend = party.get_friend_by_element(element)
+                if friend is not None:
+                    combo += 1
+                    do_attack(friend, enemy, len(banish_list), combo)
+
+        if has_banished:
+            party.gems.shift()
             party.gems.spawn()
-
-        element, banish_list = party.gems.check_banishable()
-        if element is None:
-            break
-
-        party.gems.banish()
-    
-        if element == ELEMENT_LIFE:
-            do_recover(party, len(banish_list), combo)
-        elif element == ELEMENT_NONE:
-            pass
         else:
-            friend = party.get_friend_by_element(element)
-            if friend is not None:
-                combo += 1
-                do_attack(friend, enemy, len(banish_list), combo)
-
-        party.gems.shift()
-
-    if on_spawn != True:
-        evaluate_gems(party, enemy, combo, on_spawn=True) 
+            break
 
 def on_enemy_turn(party, enemy):
     print(f'\n【{enemy.name}のターン】(HP={enemy.hp})')

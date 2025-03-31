@@ -50,7 +50,7 @@ class Gems:
             banish_list = {i}
             element = self.gems[i]
             if element == ELEMENT_NONE:
-                break
+                continue
 
             for j in range(i + 1, GEMS_LENGTH):
                 if element == self.gems[j]:
