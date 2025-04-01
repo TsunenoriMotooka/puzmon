@@ -97,6 +97,7 @@ class Party:
         if afterIndex < 0 or afterIndex >= len(self.gems):
             return
 
+        self.show_gems()
         step = 1 if beforeIndex < afterIndex else -1 
         [self.swap_gem(i, step, output) for i in range(beforeIndex, afterIndex, step)]
 
@@ -113,26 +114,24 @@ class Party:
     
     def check_banishable(self):
         for i in range(GEMS_LENGTH - 2):
-            banish_list = {i}
-            element = self.gems[i]
-            if element == ELEMENT_NONE:
+            if self.gems[i] == ELEMENT_NONE:
                 continue
 
-            for j in range(i + 1, GEMS_LENGTH):
-                if element == self.gems[j]:
-                    banish_list.add(j)
-                else:
-                    break
-            if len(banish_list) >=3:
-                return (element, banish_list)
-        return (None, None)
+            if self.gems[i:i+3] == [self.gems[i]] * 3:
+                return i
+        return -1
 
-    def banish_gems(self):
-        banish_element, banish_list = self.check_banishable()
-        if len(banish_list) > 0:
-            for i in banish_list:
+    def banish_gems(self, index):
+        gem = self.gems[index]
+        count = 0
+        for i in range(index, len(self.gems)):
+            if gem == self.gems[i]:
+                count += 1
                 self.gems[i] = ELEMENT_NONE
-            self.show_gems(banish_element, len(banish_list))
+            else:
+                break
+        self.show_gems(gem, count)
+        return gem, count
 
     def shift_gems(self):
         self.show_gems()
@@ -158,27 +157,27 @@ class Party:
         if len(friends) > 0:
             return friends[0]
 
+# data
+enemys = [
+        Monster('スライム',    100, '水', 10,  1),
+        Monster('ゴブリン',    200, '土', 20,  5),
+        Monster('オオコウモリ',300, '風', 30, 10),
+        Monster('ウェアウルフ',400, '風', 40, 15),
+        Monster('ドラゴン',    600, '火', 50, 20),
+        ]
+
+friends = [
+        Monster('朱雀', 150, '火', 30, 10),
+        Monster('青龍', 150, '風', 20, 10),
+        Monster('白虎', 150, '土', 25,  5),
+        Monster('玄武', 150, '水', 25, 15),
+        ]        
+
 # function
 def main():
     player_name = input_player_name()
 
     print('*** Puzzle & Monsters ***')
-
-    # data
-    enemys = [
-            Monster('スライム',    100, '水', 10,  1),
-            Monster('ゴブリン',    200, '土', 20,  5),
-            Monster('オオコウモリ',300, '風', 30, 10),
-            Monster('ウェアウルフ',400, '風', 40, 15),
-            Monster('ドラゴン',    600, '火', 50, 20),
-            ]
-
-    friends = [
-            Monster('朱雀', 150, '火', 25, 10),
-            Monster('青龍', 150, '風', 15, 10),
-            Monster('白虎', 150, '土', 20,  5),
-            Monster('玄武', 150, '水', 20, 15),
-            ]        
     party = organize_party(player_name, friends)
 
     win_count = go_dungeon(party, enemys)
@@ -233,29 +232,25 @@ def on_player_turn(party, enemy):
             
 def evaluate_gems(party, enemy):
     combo = 0
-    banish_count = 0
     while True:     
-        has_banished = False
         while True: 
-            element, banish_list = party.check_banishable()
-            if element is None:
+            index = party.check_banishable()
+            if index < 0:
                 break
 
-            party.banish_gems()
-            has_banished = True
-            banish_count += len(banish_list)
+            gem, count = party.banish_gems(index)
 
-            if element == ELEMENT_LIFE:
-                do_recover(party, banish_count, combo)
+            if gem == ELEMENT_LIFE:
+                do_recover(party, count, combo)
             else:
-                friend = party.get_friend_by_element(element)
+                friend = party.get_friend_by_element(gem)
                 if friend is not None:
                     combo += 1
                     has_banished = True
-                    do_attack(friend, enemy, banish_count, combo)
-
-        if has_banished:
+                    do_attack(friend, enemy, count, combo)
             party.shift_gems()
+
+        if ELEMENT_NONE in party.gems:
             party.spawn_gems()
         else:
             break
@@ -280,9 +275,9 @@ def do_battle(party, enemy):
             print(f'パーティのHPが0になった')
             return 0
 
-def do_attack(friend, enemy, banish_count, combo):
+def do_attack(friend, enemy, count, combo):
     element_boost = get_element_boost(friend.element, enemy.element)
-    combo_boost = get_combo_boost(banish_count, combo)
+    combo_boost = get_combo_boost(count, combo)
 
     damage = max(1, friend.ap - enemy.dp) * element_boost * combo_boost
     damage = blur_damage(damage)
@@ -293,12 +288,13 @@ def do_attack(friend, enemy, banish_count, combo):
     print(f'に{damage}のダメージを与えた')
     enemy.hp = max(0, enemy.hp - damage)
 
-def do_recover(party, banish_count, combo):
-    combo_boost = get_combo_boost(banish_count, combo)
+def do_recover(party, count, combo):
+    combo_boost = get_combo_boost(count, combo)
     heal = 20 * combo_boost
     heal = blur_damage(heal)
+    heal = min(heal, party.max_hp - party.hp)
     print(f'{party.name}のHPは{heal}回復した')
-    party.hp = min(party.hp + heal, party.max_hp)
+    party.hp = party.hp + heal
 
 def do_enemy_attack(party, enemy):
     damage = enemy.ap - party.dp
