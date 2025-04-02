@@ -6,6 +6,9 @@ author: tsune.motooka
 # import
 import math
 import random
+import time
+import sys
+import cursor
 
 # const
 ELEMENT_NONE = '無'
@@ -75,9 +78,9 @@ class Party:
         gems = [random.choice(list(ELEMENT_SYMBOLS.keys())[0:-1]) for i in range(count)]
         return gems
 
-    def show_gems(self, banish_element=None, banish_count=0):
+    def show_gems(self, banish_element=None, banish_count=0, end='\n'):
         for i, element in enumerate(self.gems, 0):
-            print(f'{' ' if i > 0 else ''}', end='')
+            print(f'{'\r' if i == 0 else ''}{' ' if i > 0 else ''}', end='')
             self.show_gem(element)
 
         if banish_element is not None:
@@ -85,7 +88,7 @@ class Party:
             self.show_gem(banish_element)
             print(f'x{banish_count}', end='')
 
-        print()
+        print(end, end='')
 
     def show_gem(self, element):
         color  = '4' + ELEMENT_COLORS[element]
@@ -97,9 +100,11 @@ class Party:
         if afterIndex < 0 or afterIndex >= len(self.gems):
             return
 
-        self.show_gems()
+        self.show_gems(end='')
+        sleep(0.5)
         step = 1 if beforeIndex < afterIndex else -1 
         [self.swap_gem(i, step, output) for i in range(beforeIndex, afterIndex, step)]
+        sleep(0.5)
 
     def swap_gem(self, index, step, output=True): 
         if index < 0 or index + step < 0 or index >= len(self.gems) or index + step >= len(self.gems):
@@ -110,7 +115,9 @@ class Party:
         self.gems[index] = temp
 
         if output:
-            self.show_gems()
+            print('\r',end='')
+            self.show_gems(end='')
+            sleep(0.2) 
     
     def check_banishable(self):
         for i in range(GEMS_LENGTH - 2):
@@ -130,27 +137,40 @@ class Party:
                 self.gems[i] = ELEMENT_NONE
             else:
                 break
+        print('\r', end='')
         self.show_gems(gem, count)
         return gem, count
 
     def shift_gems(self):
-        self.show_gems()
+        self.show_gems(end='')
+        sleep(0.5)
+
         for i in range(GEMS_LENGTH - 1):
+            has_shift = False
             while self.gems[i] == ELEMENT_NONE:
                 if self.gems[i:] == [ELEMENT_NONE] * (GEMS_LENGTH - i):
                     break
                 gem = self.gems.pop(i)
                 self.gems.append(gem)
-                self.show_gems()
+                print('\r',end='')
+                self.show_gems(end='')
+                sleep(0.1)
+                has_shift = True
+            if has_shift:
+                sleep(0.4)
 
     def spawn_gems(self):
-        on_spawn = False
-        for i in range(len(self.gems)):
-            if self.gems[i] == ELEMENT_NONE:
-                self.gems[i] = self.fill_gems(1)[0]
-                on_spawn = True
-        if on_spawn:
-            self.show_gems()
+        if ELEMENT_NONE in self.gems:
+            self.show_gems(end='')
+            while ELEMENT_NONE in self.gems:
+                index = self.gems.index(ELEMENT_NONE)
+                gem = self.gems.pop(index)
+                self.gems.append(gem)
+                self.gems[-1] = self.fill_gems(1)[0]
+                print('\r',end='')
+                self.show_gems(end='')
+                sleep(0.1)
+            sleep(0.4)            
 
     def get_friend_by_element(self, element):
         friends = [friend for friend in self.friends if friend.element == element]
@@ -189,10 +209,12 @@ def main():
 
 def input_player_name():
     while True:
+        cursor.show()
         player_name = input('プレイヤー名を入力してください>') or ''
         if len(player_name) == 0:
             print('エラー：プレイヤー名を入力してください')
         else:
+            cursor.hide()
             return player_name
 
 def go_dungeon(party, enemys):
@@ -232,21 +254,20 @@ def on_player_turn(party, enemy):
             
 def evaluate_gems(party, enemy):
     combo = 0
-    while True:     
+    while True:
         while True: 
             index = party.check_banishable()
             if index < 0:
                 break
 
             gem, count = party.banish_gems(index)
-
+            
             if gem == ELEMENT_LIFE:
                 do_recover(party, count, combo)
             else:
                 friend = party.get_friend_by_element(gem)
                 if friend is not None:
                     combo += 1
-                    has_banished = True
                     do_attack(friend, enemy, count, combo)
             party.shift_gems()
 
@@ -254,6 +275,7 @@ def evaluate_gems(party, enemy):
             party.spawn_gems()
         else:
             break
+    print()
 
 def on_enemy_turn(party, enemy):
     print(f'\n【{enemy.name}のターン】(HP={enemy.hp})')
@@ -324,8 +346,10 @@ def show_battle_field(party, enemy):
 
 def input_command():
     while True:
+        cursor.show()
         command = input('コマンド？>')
         if check_valid_command(command):
+            cursor.hide()
             return command
 
 def check_valid_command(command):
@@ -349,6 +373,10 @@ def check_valid_command(command):
 
 def blur_damage(damage):
     return max(1, int(damage * (random.uniform(-0.1, 0.1) + 1)))
+
+def sleep(sec):
+    sys.stdout.flush()
+    time.sleep(sec)
 
 # start app
 main()
